@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Switchboard</title>
+<meta name="description" content="Can the current life run on an apprentice wage? Cash flow, balance sheet and the job-change projection, refreshed from YNAB by GitHub Actions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,500;112,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single column of panels, summary before detail; data in mono, prose in sans. */
+:root {
+  --bg: #f1f2f4;
+  --surface: #ffffff;
+  --surface-2: #e8eaee;
+  --ink: #15181d;
+  --ink-2: #4f5663;
+  --ink-3: #7a8290;
+  --line: #d6dae1;
+  --line-2: #e9ebef;
+  --accent: #1c5cab;
+  --good: #0ca30c;
+  --warn: #c98500;
+  --crit: #d03b3b;
+  --s-stay: #2a78d6;
+  --s-1: #eb6834;
+  --s-2: #1baf7a;
+  --s-3: #eda100;
+  --s-in: #2a78d6;
+  --s-out: #eb6834;
+  --s-nw: #2a78d6;
+  --s-reach: #1baf7a;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b; --surface: #1d2026; --surface-2: #262a31;
+    --ink: #eceef2; --ink-2: #b4bac6; --ink-3: #848c9a;
+    --line: #313640; --line-2: #272b33; --accent: #6da7ec;
+    --s-stay: #3987e5; --s-1: #d95926; --s-2: #199e70; --s-3: #c98500;
+    --s-in: #3987e5; --s-out: #d95926; --s-nw: #3987e5; --s-reach: #199e70;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --surface: #1d2026; --surface-2: #262a31;
+  --ink: #eceef2; --ink-2: #b4bac6; --ink-3: #848c9a;
+  --line: #313640; --line-2: #272b33; --accent: #6da7ec;
+  --s-stay: #3987e5; --s-1: #d95926; --s-2: #199e70; --s-3: #c98500;
+  --s-in: #3987e5; --s-out: #d95926; --s-nw: #3987e5; --s-reach: #199e70;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Header */
+.masthead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding-block: 22px 4px; border-bottom: 1px solid var(--line); }
+.masthead h1 { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.01em; margin: 0; }
+.masthead h1 small { font-family: var(--font-body); font-weight: 400; font-size: 14px; color: var(--ink-2); margin-left: 10px; }
+.fresh { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.fresh .pill { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
+.dot.warn { background: var(--warn); } .dot.crit { background: var(--crit); }
+
+/* Panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px; min-width: 0; }
+.panel h2 { font-family: var(--font-display); font-weight: 700; font-size: 17px; margin: 0 0 4px; text-wrap: balance; }
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0 0 2px; }
+.lede { color: var(--ink-2); margin: 0 0 14px; max-width: 70ch; }
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 16px; margin-bottom: 10px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+
+/* Question + verdict */
+.question { padding: 26px 24px 22px; }
+.question h2 { font-size: clamp(22px, 3.2vw, 30px); line-height: 1.15; margin-bottom: 10px; }
+.verdict { font-size: 16px; max-width: 72ch; margin: 0; }
+.verdict b { font-weight: 600; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 20px; }
+.tile { border-top: 2px solid var(--line); padding-top: 10px; min-width: 0; }
+.tile .k { font-size: 12px; color: var(--ink-2); }
+.tile .v { font-family: var(--font-mono); font-size: 24px; font-weight: 500; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; white-space: nowrap; }
+td:first-child { white-space: normal; min-width: 150px; }
+th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+td.n, th.n { text-align: right; font-family: var(--font-mono); }
+tr.total td { font-weight: 600; border-top: 1px solid var(--line); }
+tr.sub td:first-child { padding-left: 22px; color: var(--ink-2); }
+.neg { color: var(--crit); }
+.pos { color: var(--good); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+.chip.warn { color: #7a5200; background: color-mix(in oklab, var(--warn) 18%, var(--surface)); }
+:root[data-theme="dark"] .chip.warn { color: #f4c76a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip.warn { color: #f4c76a; } }
+
+/* Charts */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font-mono); font-size: 11px; }
+.chart .grid line { stroke: var(--line-2); }
+.chart .axis text { fill: var(--ink-3); }
+.chart .lbl { fill: var(--ink-2); font-family: var(--font-body); font-size: 11.5px; }
+.chart .lbl.strong { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 1.4; padding: 7px 9px; border-radius: 4px; max-width: 260px; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .08s; }
+.tip .t { font-weight: 600; margin-bottom: 2px; }
+.tip .r { display: flex; justify-content: space-between; gap: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12.5px; background: var(--surface); color: var(--ink-2); border: 0; padding: 4px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+details { border-top: 1px solid var(--line-2); margin-top: 10px; }
+summary { cursor: pointer; padding: 8px 0; font-size: 13px; color: var(--ink-2); }
+.notes { font-size: 13px; color: var(--ink-2); margin: 0; padding-left: 18px; }
+.notes li { margin: 3px 0; }
+.empty { padding: 40px 24px; text-align: center; color: var(--ink-2); }
+.empty code { font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="empty" id="empty">No data yet. Run the <em>Financial plan</em> workflow, or <code>python3 scripts/bundle.py</code>, so <code>plan/data/bundle.js</code> exists beside this page.</div>
+</div>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+<script src="unlock.js"></script>
+<script>
+// Entry point. bundle.js sets window.PLAN_BUNDLE for local use; the deployed
+// copy decrypts the bundle first (unlock.js) and then calls renderPlan.
+window.renderPlan = function (B) {
+  'use strict';
+  if (!B || !B.cashflow || !B.networth) return;
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // ---------- helpers ----------
+  const $ = (tag, attrs, ...kids) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') el.className = v;
+      else if (k === 'html') el.innerHTML = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid != null) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    return el;
+  };
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = (tag, attrs, ...kids) => {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+    for (const kid of kids.flat()) if (kid != null) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    return el;
+  };
+  const money = (v, opts = {}) => {
+    const abs = Math.abs(v);
+    let s;
+    if (opts.k && abs >= 1e6) s = (abs / 1e6).toFixed(abs % 1e6 === 0 ? 0 : 2).replace(/\.?0+$/, '') + 'M';
+    else if (opts.k && abs >= 1000) s = (abs / 1000).toFixed(abs >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+    else s = Math.round(abs).toLocaleString('en-US');
+    return (v < 0 ? '-$' : '$') + s;
+  };
+  const moneyM = v => money(v, { k: true });
+  const pct = v => v == null ? 'n/a' : Math.round(v * 100) + '%';
+  const signed = v => (v > 0 ? '+' : '') + money(v);
+  const monthName = ym => { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: '2-digit' }).replace(' ', ' ’'); };
+  const monthLong = ym => { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }); };
+  const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number); const i = y * 12 + (m - 1) + n; return `${Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, '0')}`; };
+  const cls = v => v < 0 ? 'neg' : v > 0 ? 'pos' : '';
+  const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const resizers = []; let rt;
+  const onResize = fn => { resizers.push(fn); };
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => resizers.forEach(f => f()), 120); });
+
+  // tooltip
+  const tip = document.getElementById('tip');
+  const showTip = (x, y, html) => {
+    tip.innerHTML = html; tip.style.opacity = 1;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    const left = Math.min(Math.max(8, x + 14), window.innerWidth - w - 8);
+    const top = y - h - 14 < 8 ? y + 18 : y - h - 14;
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  };
+  const hideTip = () => { tip.style.opacity = 0; };
+
+  // nice ticks
+  const ticks = (min, max, n = 5) => {
+    const span = max - min || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => span / s <= n) || mag * 10;
+    const out = []; for (let t = Math.ceil(min / step) * step; t <= max + 1e-9; t += step) out.push(t);
+    return { step, ticks: out };
+  };
+
+  const cf = B.cashflow, nw = B.networth, sc = B.scenario, fr = B.freshness || {};
+  const floor = cf.floor_flex ? cf.floor_flex.floor_monthly : null;
+  const current = cf.totals.monthly_spending;
+
+  // ---------- masthead ----------
+  const ledgerDays = fr.days_since_last_on_budget_txn;
+  const ledgerState = ledgerDays == null ? 'warn' : ledgerDays > 14 ? 'crit' : ledgerDays > 7 ? 'warn' : '';
+  const staleList = fr.stale_tracking_accounts || [];
+  app.append($('header', { class: 'masthead' },
+    $('h1', {}, 'Switchboard', $('small', {}, 'the plan, refreshed by GitHub Actions')),
+    $('div', { class: 'fresh' },
+      $('span', { class: 'pill' }, $('i', { class: 'dot ' + ledgerState }), ledgerDays == null ? 'YNAB ledger age unknown' : `YNAB ledger: last transaction ${ledgerDays}d ago`),
+      $('span', { class: 'pill' }, $('i', { class: 'dot ' + (staleList.length ? 'warn' : '') }), staleList.length ? `${staleList.length} tracking account${staleList.length > 1 ? 's' : ''} stale` : 'tracking accounts current'),
+      $('span', { class: 'pill' }, `reports as of ${nw.as_of}`)
+    )
+  ));
+
+  // ---------- the question ----------
+  const scenarios = sc ? sc.scenarios : [];
+  const stay = sc ? sc.stay : null;
+  const horizonY = sc ? sc.horizon_years : 10;
+  const anyRunsOut = scenarios.some(s => s.summary.reachable_zero_month);
+  const mainScn = scenarios[0];
+  let verdict;
+  if (!sc) verdict = $('p', { class: 'verdict' }, 'No scenario projection yet. Add plan/assumptions.toml and re-run the workflow.');
+  else {
+    const costs = scenarios.map(s => s.summary.vs_stay && s.summary.vs_stay[String(horizonY)]).filter(v => v != null);
+    const minTrough = Math.min(...scenarios.map(s => s.summary.trough.reachable));
+    verdict = $('p', { class: 'verdict' },
+      anyRunsOut
+        ? $('span', {}, $('b', {}, 'Not on every path. '), 'At least one scenario exhausts reachable assets within ', horizonY, ' years. See the glance table below.')
+        : $('span', {}, $('b', {}, 'Yes, on every path modeled. '), `Reachable assets never fall below ${money(minTrough)} in any scenario. The question is price: by year ${horizonY} the switch costs between ${money(Math.min(...costs.map(Math.abs)))} and ${money(Math.max(...costs.map(Math.abs)))} of net worth compared with staying.`)
+    );
+  }
+  const runway = nw.runway;
+  app.append($('section', { class: 'panel question' },
+    $('p', { class: 'eyebrow' }, 'The question'),
+    $('h2', {}, 'Can the current life run on an apprentice wage?'),
+    verdict,
+    $('div', { class: 'tiles' },
+      tile('Reachable without penalty', money(nw.totals.reachable), 'cash minus cards, plus taxable investments'),
+      tile('Net worth', money(nw.totals.net_worth), `retirement ${money(nw.totals.by_class.retirement)} of it`),
+      tile('Monthly floor', floor == null ? 'not set' : money(floor), floor == null ? 'set floor_groups in config' : `${cf.floor_flex.floor_pct_of_income}% of take-home`),
+      tile('Current lifestyle', money(current) + '/mo', `savings rate ${pct(cf.totals.savings_rate)}`),
+      runway ? tile('Runway at zero income', fmtMonths(runway.months.reachable.current), `reachable assets at current lifestyle; ${fmtMonths(runway.months.reachable.floor)} at the floor`) : null
+    )
+  ));
+  function tile(k, v, sub) { return $('div', { class: 'tile' }, $('div', { class: 'k' }, k), $('div', { class: 'v' }, v), sub ? $('div', { class: 'sub' }, sub) : null); }
+  function fmtMonths(m) { if (m == null) return 'n/a'; return m >= 24 ? (m / 12).toFixed(1) + ' yr' : Math.round(m) + ' mo'; }
+
+  // ---------- scenarios ----------
+  if (sc) {
+    const colors = ['--s-1', '--s-2', '--s-3', '--s-stay'];
+    const series = [{ key: 'stay', label: stay.label, color: '--s-stay', data: stay.series, start: null, dash: true },
+      ...scenarios.map((s, i) => ({ key: s.key, label: s.label, color: colors[i % 3], data: s.series, start: s.start_index, s }))];
+    let metric = 'reachable';
+    const chartHost = $('div', { class: 'chart' });
+    const seg = $('div', { class: 'seg', role: 'group', 'aria-label': 'Metric' },
+      ...[['reachable', 'Reachable assets'], ['net_worth', 'Net worth']].map(([k, l]) => $('button', { type: 'button', id: 'metric-' + k, 'aria-pressed': String(k === metric), onclick: () => { metric = k; seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'metric-' + k))); drawScenario(); } }, l)));
+    const panel = $('section', { class: 'panel' },
+      $('div', { class: 'head' }, $('div', {}, $('p', { class: 'eyebrow' }, 'The switch'), $('h2', {}, `${horizonY}-year projection, today's dollars`)), seg),
+      $('p', { class: 'lede' }, `Each line is what you could reach without penalty if you took that path. Dotted vertical: the switch starts. Wages, extra costs and the ${(sc.baseline.annual_return * 100).toFixed(0)}% real return come from plan/assumptions.toml.`),
+      $('div', { class: 'legend' }, ...series.map(s => $('span', {}, $('i', { class: 'sw', style: `background:var(${s.color})` }), s.label))),
+      chartHost
+    );
+    app.append(panel);
+
+    function drawScenario() {
+      chartHost.innerHTML = '';
+      const narrow = chartHost.clientWidth < 640;
+      const W = narrow ? 560 : 960, H = narrow ? 300 : 340, m = { t: 16, r: narrow ? 16 : 230, b: 34, l: 56 };
+      const iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const n = stay.series[metric].length;
+      const all = series.flatMap(s => s.data[metric]);
+      const yMin = Math.min(0, ...all), yMax = Math.max(...all);
+      const { ticks: yT } = ticks(yMin, yMax * 1.04, 5);
+      const y0 = yT[0], y1 = yT[yT.length - 1] >= yMax ? yT[yT.length - 1] : yT[yT.length - 1] + (yT[1] - yT[0]);
+      const x = i => m.l + (i / (n - 1)) * iw, y = v => m.t + ih - ((v - y0) / (y1 - y0)) * ih;
+      const svg = S('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Projection by scenario' });
+      const g = S('g', { class: 'grid' }); const ax = S('g', { class: 'axis' });
+      yT.concat(y1 > yT[yT.length - 1] ? [y1] : []).forEach(t => { g.append(S('line', { x1: m.l, x2: m.l + iw, y1: y(t), y2: y(t) })); ax.append(S('text', { x: m.l - 8, y: y(t) + 4, 'text-anchor': 'end' }, moneyM(t))); });
+      for (let yr = 0; yr <= horizonY; yr++) { const i = Math.min(n - 1, yr * 12); ax.append(S('text', { x: x(i), y: H - 10, 'text-anchor': 'middle' }, String(Number(sc.month0.slice(0, 4)) + yr))); }
+      svg.append(g, ax);
+      const starts = [...new Set(series.filter(s => s.start != null).map(s => s.start))];
+      starts.forEach(i => svg.append(S('line', { x1: x(i), x2: x(i), y1: m.t, y2: m.t + ih, stroke: cssVar('--ink-3'), 'stroke-dasharray': '2 4' })));
+      const paths = series.map(s => {
+        const d = s.data[metric].map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join('');
+        const p = S('path', { d, fill: 'none', stroke: `var(${s.color})`, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-dasharray': s.dash ? '6 4' : 'none' });
+        svg.append(p); return p;
+      });
+      // end labels, de-overlapped
+      const ends = series.map(s => ({ s, y: y(s.data[metric][n - 1]), v: s.data[metric][n - 1] })).sort((a, b) => a.y - b.y);
+      for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
+      if (!narrow) ends.forEach(e => {
+        svg.append(S('line', { x1: x(n - 1) + 3, x2: m.l + iw + 10, y1: y(e.v), y2: e.y, stroke: cssVar('--line') }));
+        svg.append(S('text', { class: 'lbl', x: m.l + iw + 14, y: e.y + 4 }, `${e.s.label.length > 30 ? e.s.label.slice(0, 29) + '…' : e.s.label}  ${moneyM(e.v)}`));
+      });
+      // trough markers
+      series.filter(s => s.s && metric === 'reachable').forEach(s => {
+        const arr = s.data.reachable; let mi = 0; arr.forEach((v, i) => { if (v < arr[mi]) mi = i; });
+        svg.append(S('circle', { cx: x(mi), cy: y(arr[mi]), r: 4, fill: `var(${s.color})`, stroke: cssVar('--surface'), 'stroke-width': 2 }));
+      });
+      // hover
+      const cross = S('line', { y1: m.t, y2: m.t + ih, stroke: cssVar('--ink-3'), 'stroke-width': 1, opacity: 0 });
+      const dots = series.map(s => S('circle', { r: 4, fill: `var(${s.color})`, stroke: cssVar('--surface'), 'stroke-width': 2, opacity: 0 }));
+      svg.append(cross, ...dots);
+      const hit = S('rect', { x: m.l, y: m.t, width: iw, height: ih, fill: 'transparent' });
+      hit.addEventListener('mousemove', ev => {
+        const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+        const i = Math.max(0, Math.min(n - 1, Math.round((px - m.l) / iw * (n - 1))));
+        cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1);
+        series.forEach((s, k) => { dots[k].setAttribute('cx', x(i)); dots[k].setAttribute('cy', y(s.data[metric][i])); dots[k].setAttribute('opacity', 1); });
+        showTip(ev.clientX, ev.clientY, `<div class="t">${monthLong(addMonths(sc.month0, i))}</div>` + series.map(s => `<div class="r"><span>${s.label}</span><b>${money(s.data[metric][i])}</b></div>`).join(''));
+      });
+      hit.addEventListener('mouseleave', () => { cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); hideTip(); });
+      svg.append(hit);
+      chartHost.append(svg);
+    }
+    drawScenario();
+    onResize(drawScenario);
+
+    // glance table
+    const yrs = [5, 10].filter(y => y <= horizonY);
+    const glance = $('table', {},
+      $('thead', {}, $('tr', {}, $('th', {}, 'Scenario'), $('th', { class: 'n' }, 'Lifestyle /mo'), $('th', { class: 'n' }, 'Year-1 gap /mo'), $('th', {}, 'Covers costs from'), $('th', { class: 'n' }, 'Drawn down by then'), $('th', {}, 'Low point'), ...yrs.map(y => $('th', { class: 'n' }, `Yr ${y} vs stay`)))),
+      $('tbody', {},
+        $('tr', {}, $('td', {}, $('i', { class: 'sw', style: 'background:var(--s-stay)' }), stay.label), $('td', { class: 'n' }, money(current)), $('td', { class: 'n' }, ''), $('td', {}, ''), $('td', { class: 'n' }, ''), $('td', {}, ''), ...yrs.map(y => $('td', { class: 'n' }, money(stay.summary.checkpoints[String(y)].net_worth)))),
+        ...scenarios.map((s, i) => { const sm = s.summary; return $('tr', {},
+          $('td', {}, $('i', { class: 'sw', style: `background:var(${colors[i % 3]})` }), s.label),
+          $('td', { class: 'n' }, money(s.lifestyle_monthly + s.extra_monthly)),
+          $('td', { class: 'n ' + cls(s.stage1_gap) }, signed(s.stage1_gap)),
+          $('td', {}, sm.breakeven_month ? `${monthName(sm.breakeven_month)} (${sm.months_underwater} mo under)` : 'never within horizon'),
+          $('td', { class: 'n' }, money(sm.drawdown_to_breakeven)),
+          $('td', {}, `${money(sm.trough.reachable)} in ${monthName(sm.trough.month)}`),
+          ...yrs.map(y => $('td', { class: 'n ' + cls(sm.vs_stay[String(y)]) }, signed(sm.vs_stay[String(y)])))); })
+      ));
+    const notes = $('ul', { class: 'notes' },
+      ...scenarios.map(s => $('li', {}, $('b', {}, s.label + ': '), `take-home starts at ${money(s.stage1_take_home)}/mo against ${money(s.lifestyle_monthly + s.extra_monthly)}/mo of costs. To never draw down on this wage path, lifestyle would have to stay under ${money(s.max_sustainable_lifestyle)}/mo.`, s.summary.retirement_tapped ? ` Retirement tapped for ${money(s.summary.retirement_tapped)}.` : '')),
+      $('li', {}, 'Deficits draw cash, then taxable investments, then retirement. Taxes on selling and early-withdrawal penalties are not modeled; a real drawdown costs more. Windfalls in the stay-put case are spread evenly.')
+    );
+    panel.append($('div', { class: 'tbl-wrap', style: 'margin-top:14px' }, glance), $('details', {}, $('summary', {}, 'How to read these numbers'), notes));
+  }
+
+  // ---------- cash flow ----------
+  {
+    const months = cf.by_month;
+    const host = $('div', { class: 'chart' });
+    const panel = $('section', { class: 'panel' },
+      $('p', { class: 'eyebrow' }, 'Cash flow'),
+      $('h2', {}, `Income vs. spending, ${cf.window.label}`),
+      $('p', { class: 'lede' }, `Take-home ${money(cf.totals.monthly_income)}/mo on average, ${money(cf.totals.monthly_spending)}/mo spent, ${money(cf.totals.monthly_saved)}/mo moved to savings. Spending is net of refunds; transfers between your own accounts are excluded.`),
+      $('div', { class: 'legend' }, $('span', {}, $('i', { class: 'sw', style: 'background:var(--s-in)' }), 'Income'), $('span', {}, $('i', { class: 'sw', style: 'background:var(--s-out)' }), 'Spending'), $('span', {}, $('i', { class: 'sw', style: 'background:var(--line)' }), 'Saved')),
+      host);
+    const drawCash = () => {
+    host.innerHTML = '';
+    const narrow = host.clientWidth < 640;
+    const W = narrow ? 560 : 960, H = narrow ? 220 : 260, m = { t: 12, r: 12, b: 30, l: 52 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const vals = months.flatMap(r => [r.income, r.spending + r.uncategorized + (r.saved || 0)]);
+    const { ticks: yT } = ticks(0, Math.max(...vals) * 1.05, 4);
+    const y1 = yT[yT.length - 1] >= Math.max(...vals) ? yT[yT.length - 1] : yT[yT.length - 1] + (yT[1] - yT[0]);
+    const y = v => m.t + ih - (v / y1) * ih;
+    const band = iw / months.length, bw = Math.min(22, band * 0.3);
+    const svg = S('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Monthly income and spending' });
+    const g = S('g', { class: 'grid' }), ax = S('g', { class: 'axis' });
+    yT.concat(y1 > yT[yT.length - 1] ? [y1] : []).forEach(t => { g.append(S('line', { x1: m.l, x2: m.l + iw, y1: y(t), y2: y(t) })); ax.append(S('text', { x: m.l - 8, y: y(t) + 4, 'text-anchor': 'end' }, moneyM(t))); });
+    svg.append(g, ax);
+    months.forEach((r, i) => {
+      const cx = m.l + band * (i + 0.5);
+      const bar = (xx, v, fill, extra) => S('rect', Object.assign({ x: xx, y: y(v), width: bw, height: Math.max(0, y(0) - y(v)), fill, rx: 2 }, extra || {}));
+      const spend = r.spending + r.uncategorized;
+      svg.append(bar(cx - bw - 1, r.income, 'var(--s-in)'));
+      svg.append(bar(cx + 1, spend, 'var(--s-out)'));
+      if (r.saved) svg.append(S('rect', { x: cx + 1, y: y(spend + r.saved), width: bw, height: Math.max(0, y(spend) - y(spend + r.saved) - 2), fill: 'var(--line)', rx: 2 }));
+      if (!narrow || i % 2 === 0) ax.append(S('text', { x: cx, y: H - 10, 'text-anchor': 'middle' }, monthName(r.month).replace(/\s.*/, '') + (!narrow && (r.month.endsWith('-01') || i === 0) ? ' ’' + r.month.slice(2, 4) : '')));
+      const hit = S('rect', { x: cx - band / 2, y: m.t, width: band, height: ih, fill: 'transparent' });
+      hit.addEventListener('mousemove', ev => showTip(ev.clientX, ev.clientY, `<div class="t">${monthLong(r.month)}</div><div class="r"><span>Income</span><b>${money(r.income)}</b></div><div class="r"><span>Spending</span><b>${money(spend)}</b></div>${r.saved ? `<div class="r"><span>Saved</span><b>${money(r.saved)}</b></div>` : ''}<div class="r"><span>Net</span><b>${signed(r.net)}</b></div>`));
+      hit.addEventListener('mouseleave', hideTip);
+      svg.append(hit);
+    });
+    host.append(svg);
+    };
+    drawCash();
+    onResize(drawCash);
+    app.append(panel);
+  }
+
+  // ---------- spending by group + balance sheet ----------
+  const two = $('div', { class: 'grid-2' });
+  app.append(two);
+  {
+    const groups = cf.by_group;
+    const maxV = Math.max(...groups.map(g => g.monthly_avg));
+    const rows = [];
+    groups.forEach(g => {
+      rows.push(barRow(g.group, g.monthly_avg, g.pct_of_spending, g.floor, false));
+      g.categories.slice(0, 6).forEach(c => rows.push(barRow(c.category, c.monthly_avg, c.pct_of_spending, g.floor, true)));
+      if (g.categories.length > 6) rows.push($('tr', { class: 'sub' }, $('td', { colspan: 3, style: 'color:var(--ink-3)' }, `+ ${g.categories.length - 6} smaller categories`)));
+    });
+    function barRow(name, v, p, isFloor, sub) {
+      const w = Math.max(0, v / maxV * 100);
+      return $('tr', { class: sub ? 'sub' : '' },
+        $('td', {}, name, (!sub && isFloor) ? $('span', { class: 'chip' }, 'floor') : null),
+        $('td', { style: 'width:38%; min-width:120px' }, $('div', { style: `height:${sub ? 6 : 10}px;border-radius:2px;background:${isFloor ? 'var(--s-out)' : 'var(--s-in)'};opacity:${sub ? .55 : 1};width:${w}%` })),
+        $('td', { class: 'n' }, money(v), $('span', { style: 'color:var(--ink-3);font-size:11px' }, `  ${p}%`)));
+    }
+    const ff = cf.floor_flex;
+    two.append($('section', { class: 'panel' },
+      $('p', { class: 'eyebrow' }, 'Where it goes'),
+      $('h2', {}, 'Spending per month, by group'),
+      $('p', { class: 'lede' }, ff ? `Floor groups (${ff.floor_groups.join(', ')}) cost ${money(ff.floor_monthly)}/mo, ${ff.floor_pct_of_spending}% of spending. Everything else is ${money(ff.flex_monthly)}/mo of choices.` : 'Set floor_groups in plan/config.json to split structural from discretionary.'),
+      $('div', { class: 'tbl-wrap' }, $('table', {}, $('tbody', {}, ...rows,
+        ...(cf.savings_by_group || []).map(s => $('tr', { class: 'total' }, $('td', {}, s.group, $('span', { class: 'chip' }, 'savings, not spending')), $('td', {}), $('td', { class: 'n' }, money(s.monthly_avg)))))))
+    ));
+  }
+  {
+    const hist = B.networth_history || [];
+    const host = $('div', { class: 'chart' });
+    const t = nw.totals, bc = t.by_class;
+    const panel = $('section', { class: 'panel' },
+      $('p', { class: 'eyebrow' }, 'Balance sheet'),
+      $('h2', {}, `Net worth ${money(t.net_worth)}`),
+      $('p', { class: 'lede' }, `Reachable without penalty ${money(t.reachable)}; retirement ${money(bc.retirement)}${bc.debt ? `; debts ${money(bc.debt)}` : ''}. Solid points are saved snapshots; the faint line before them is reconstructed from transactions.`),
+      $('div', { class: 'legend' }, $('span', {}, $('i', { class: 'sw', style: 'background:var(--s-nw)' }), 'Net worth'), $('span', {}, $('i', { class: 'sw', style: 'background:var(--s-reach)' }), 'Reachable')),
+      host);
+    if (hist.length > 1) {
+      const W = 520, H = 220, m = { t: 12, r: 16, b: 28, l: 50 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const d0 = new Date(hist[0].date).getTime(), d1 = new Date(hist[hist.length - 1].date).getTime();
+      const x = d => m.l + ((new Date(d).getTime() - d0) / Math.max(1, d1 - d0)) * iw;
+      const vals = hist.flatMap(h => [h.net_worth, h.reachable]);
+      const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.15 || 1000;
+      const { ticks: yT } = ticks(Math.max(0, lo - pad), hi + pad, 4);
+      const y0 = yT[0], y1 = yT[yT.length - 1] >= hi ? yT[yT.length - 1] : yT[yT.length - 1] + (yT[1] - yT[0]);
+      const y = v => m.t + ih - ((v - y0) / (y1 - y0)) * ih;
+      const svg = S('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Net worth over time' });
+      const g = S('g', { class: 'grid' }), ax = S('g', { class: 'axis' });
+      yT.concat(y1 > yT[yT.length - 1] ? [y1] : []).forEach(tk => { g.append(S('line', { x1: m.l, x2: m.l + iw, y1: y(tk), y2: y(tk) })); ax.append(S('text', { x: m.l - 8, y: y(tk) + 4, 'text-anchor': 'end' }, moneyM(tk))); });
+      const seen = new Set();
+      hist.forEach((h, i) => { const k = h.date.slice(0, 7); if (!seen.has(k) && (i % 2 === 0 || i === hist.length - 1)) { seen.add(k); ax.append(S('text', { x: x(h.date), y: H - 10, 'text-anchor': 'middle' }, monthName(k).replace(/\s.*/, ''))); } });
+      svg.append(g, ax);
+      [['net_worth', '--s-nw'], ['reachable', '--s-reach']].forEach(([k, c]) => {
+        const rec = hist.filter(h => h.source === 'reconstructed'), snap = hist.filter(h => h.source === 'snapshot');
+        const joined = rec.length && snap.length ? rec.concat([snap[0]]) : rec;
+        const path = pts => pts.map((h, i) => (i ? 'L' : 'M') + x(h.date).toFixed(1) + ' ' + y(h[k]).toFixed(1)).join('');
+        if (joined.length > 1) svg.append(S('path', { d: path(joined), fill: 'none', stroke: `var(${c})`, 'stroke-width': 2, 'stroke-dasharray': '3 4', opacity: .7 }));
+        if (snap.length > 1) svg.append(S('path', { d: path(snap), fill: 'none', stroke: `var(${c})`, 'stroke-width': 2 }));
+        snap.forEach(h => svg.append(S('circle', { cx: x(h.date), cy: y(h[k]), r: 4, fill: `var(${c})`, stroke: cssVar('--surface'), 'stroke-width': 2 })));
+      });
+      const hit = S('rect', { x: m.l, y: m.t, width: iw, height: ih, fill: 'transparent' });
+      hit.addEventListener('mousemove', ev => {
+        const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+        let best = hist[0]; hist.forEach(h => { if (Math.abs(x(h.date) - px) < Math.abs(x(best.date) - px)) best = h; });
+        showTip(ev.clientX, ev.clientY, `<div class="t">${best.date}${best.source === 'reconstructed' ? ' (reconstructed)' : ''}</div><div class="r"><span>Net worth</span><b>${money(best.net_worth)}</b></div><div class="r"><span>Reachable</span><b>${money(best.reachable)}</b></div><div class="r"><span>Retirement</span><b>${money(best.retirement)}</b></div>`);
+      });
+      hit.addEventListener('mouseleave', hideTip);
+      svg.append(hit);
+      host.append(svg);
+    } else host.append($('p', { class: 'lede' }, 'The trend appears once there are two or more snapshots.'));
+    const classLabel = { liquid: 'Liquid', credit: 'Credit', invested: 'Invested', retirement: 'Retirement', property: 'Property', debt: 'Debt' };
+    const accts = nw.accounts;
+    panel.append($('div', { class: 'tbl-wrap', style: 'margin-top:8px' }, $('table', {},
+      $('thead', {}, $('tr', {}, $('th', {}, 'Account'), $('th', {}, 'Class'), $('th', { class: 'n' }, 'Balance'), $('th', {}, 'Updated'))),
+      $('tbody', {}, ...accts.map(a => $('tr', {}, $('td', {}, a.name), $('td', {}, classLabel[a.class] || a.class), $('td', { class: 'n ' + (a.balance < 0 ? 'neg' : '') }, money(a.balance)), $('td', {}, a.last_activity_days == null ? 'never' : a.last_activity_days === 0 ? 'today' : `${a.last_activity_days}d ago`, a.stale ? $('span', { class: 'chip warn' }, 'stale') : null))),
+        $('tr', { class: 'total' }, $('td', { colspan: 2 }, 'Net worth'), $('td', { class: 'n' }, money(t.net_worth)), $('td', {})))
+    )));
+    two.append(panel);
+  }
+
+  // ---------- footer notes ----------
+  const dq = cf.data_quality || {}, ex = cf.excluded || {};
+  app.append($('section', { class: 'panel' },
+    $('p', { class: 'eyebrow' }, 'Data quality'),
+    $('ul', { class: 'notes' },
+      $('li', {}, dq.uncategorized_count ? `${dq.uncategorized_count} uncategorized transactions (${money(dq.uncategorized_total)}) counted against net but in no group.` : 'No uncategorized transactions in the window.'),
+      $('li', {}, `Excluded from cash flow: ${ex.on_budget_transfer || 0} transfer legs between your own accounts, ${ex.off_budget_account || 0} tracking-account transactions, ${ex.starting_balance || 0} starting balances.`),
+      staleList.length ? $('li', {}, `Stale tracking accounts: ${staleList.join(', ')}. Their balances are whatever was last typed into YNAB.`) : null,
+      ledgerDays != null && ledgerDays > 7 ? $('li', {}, `YNAB's newest on-budget transaction is ${ledgerDays} days old. Bank imports pause when the app isn't opened; open YNAB, let it sync, and re-run the workflow.`) : null,
+      $('li', {}, `Income here is take-home; pre-tax 401k and health premiums never reach YNAB. The projection adds them back via employer_retirement_monthly in the assumptions.`),
+      $('li', {}, `Generated ${B.generated_at.replace('T', ' ').replace('Z', ' UTC')}.`)
+    )
+  ));
+};
+if (window.PLAN_BUNDLE) window.renderPlan(window.PLAN_BUNDLE);
+</script>
+</body>
+</html>
