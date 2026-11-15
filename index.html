@@ -303,12 +303,24 @@ window.renderPlan = function (B) {
     const monthLabel = ym => monthLong(ym);
     const two = $('div', { class: 'grid-2' });
     // Scorecard: monthly benchmarking against the allocation targets
-    const bmk = P.benchmark;
     {
+      // Views: the trailing 12 months, plus one per calendar year when the long history is present.
+      const BY = P.benchmark_years, views = [];
+      if (P.benchmark) views.push({ key: 't12', label: 'Last 12 months', span: '12 months', bmk: P.benchmark, d: cf });
+      if (BY && BY.years) Object.keys(BY.years).sort().reverse().forEach(y => views.push({ key: y, label: y, span: y, bmk: BY.years[y], d: BY.detail || {} }));
+      let viewKey = views.length ? views[0].key : null;
+      try { const k = localStorage.getItem('plan.bench.view'); if (k && views.some(v => v.key === k)) viewKey = k; } catch (e) { /* storage unavailable */ }
+      const body = $('div', {});
+      const seg = views.length > 1 ? $('div', { class: 'seg', role: 'group', 'aria-label': 'Period' },
+        ...views.map(v => $('button', { type: 'button', 'data-k': v.key, 'aria-pressed': String(v.key === viewKey), onclick: () => {
+          viewKey = v.key; try { localStorage.setItem('plan.bench.view', v.key); } catch (e) { /* ignore */ }
+          seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === v.key))); hideTip(); drawBench(v); } }, v.label))) : null;
       const panel = $('section', { class: 'panel', id: 'scorecard' },
-        $('p', { class: 'eyebrow' }, 'Scorecard'),
-        $('h2', {}, 'Monthly benchmarking'));
-      if (bmk) {
+        $('div', { class: 'head' }, $('div', {}, $('p', { class: 'eyebrow' }, 'Scorecard'), $('h2', {}, 'Monthly benchmarking')), seg),
+        body);
+      const drawBench = view => {
+        body.replaceChildren();
+        const panel = body, bmk = view.bmk, cf = view.d;
         const cols = bmk.columns;
         const tgt = c => c.target == null ? '' : `${c.direction === 'at_most' ? '≤' : '≥'} ${Math.round(c.target * 100)}%`;
         // Hover breakdown: which categories made up a cell, and how each compares with its average over the other months.
@@ -369,20 +381,21 @@ window.renderPlan = function (B) {
             $('tbody', {},
               ...bmk.rows.map(r => $('tr', {}, $('td', {}, monthName(r.month)),
                 ...cols.map(c => hoverable($('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%'), r, c)),
-                (() => { const td = $('td', { class: 'n hov' }, money(r.pay),
-                    r.asset_sales ? $('span', { class: 'chip', title: 'arrived from a tracking account; not counted as income' }, `+${money(r.asset_sales)} sale`) : null);
+                (() => { const td = $('td', { class: 'n hov' }, money(r.pay));
                   td.tabIndex = 0; td.addEventListener('mousemove', ev => showTip(ev.clientX, ev.clientY, incomeTip(r))); td.addEventListener('mouseleave', hideTip);
                   td.addEventListener('focus', () => { const b = td.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, incomeTip(r)); }); td.addEventListener('blur', hideTip); return td; })(),
                 $('td', { class: 'n' }, money(r.spending)),
                 (() => { const td = $('td', { class: 'n hov' + (r.running_net < 0 ? ' neg' : '') }, signed(r.running_net)); const tip = () => netTip(r);
                   td.tabIndex = 0; td.addEventListener('mousemove', ev => showTip(ev.clientX, ev.clientY, tip())); td.addEventListener('mouseleave', hideTip);
                   td.addEventListener('focus', () => { const b = td.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, tip()); }); td.addEventListener('blur', hideTip); return td; })())),
-              $('tr', { class: 'avg' }, $('td', {}, '12 months'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, ''), $('td', { class: 'n' }, bmk.rows.length ? signed(bmk.rows[bmk.rows.length - 1].running_net) : '')),
+              $('tr', { class: 'avg' }, $('td', {}, view.key === 't12' ? '12 months' : `${view.span} (${bmk.rows.length} mo)`), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, ''), $('td', { class: 'n' }, bmk.rows.length ? signed(bmk.rows[bmk.rows.length - 1].running_net) : '')),
               ))),
-          $('p', { class: 'bm-note' }, $('b', {}, 'Savings, 12 months: '),
-                bmk.pay_savings_rate == null ? `${pct(cf.totals.savings_rate)} of all income kept` :
-                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(cf.totals.savings_rate)} of all income kept`));
-      } else panel.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
+          $('p', { class: 'bm-note' }, $('b', {}, `Savings, ${view.span}: `),
+                bmk.pay_savings_rate == null ? `${pct(bmk.trailing_savings_rate)} of all income kept` :
+                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(bmk.trailing_savings_rate)} of all income kept`));
+      };
+      if (views.length) drawBench(views.find(v => v.key === viewKey));
+      else body.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
       app.append(panel);
     }
     // Liquidity
