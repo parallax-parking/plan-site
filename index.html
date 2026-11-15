@@ -95,6 +95,10 @@ a { color: var(--accent); }
 .bm td.ok, .bm td.over, .bm td.under { font-weight: 500; }
 .bm th .t { display: block; font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--ink-3); font-weight: 500; }
 .bm tr.avg td { border-top: 1px solid var(--line); font-weight: 600; }
+.bm td.hov { cursor: help; }
+.tip .sub { color: color-mix(in oklab, var(--bg) 70%, var(--ink)); font-size: 11px; margin-top: 3px; }
+.tip .r.dim { opacity: .7; }
+.tip .r b.up { color: #f0a0a0; } .tip .r b.dn { color: #a8e0a8; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 
 /* Panels */
@@ -298,12 +302,48 @@ window.renderPlan = function (B) {
       if (bmk) {
         const cols = bmk.columns;
         const tgt = c => c.target == null ? '' : `${c.direction === 'at_most' ? '≤' : '≥'} ${Math.round(c.target * 100)}%`;
-        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's take-home. Savings is what was not spent, wherever it sits; Invested is what actually moved into the savings groups. Money arriving from a brokerage sale is neither income nor saving. Green meets the target in the group's name, red misses it.`),
+        // Hover breakdown: which categories made up a cell, and how each compares with its average over the other months.
+        const bmc = cf.by_month_category || {}, bmsc = cf.by_month_savings_category || {}, cg = cf.category_group || {};
+        const months = bmk.rows.map(r => r.month);
+        const avgOther = (table, cat, month) => { const others = months.filter(m => m !== month); return others.length ? others.reduce((s, m) => s + ((table[m] || {})[cat] || 0), 0) / others.length : 0; };
+        const rowsHtml = (table, cats, month, income) => cats.map(c => {
+          const v = (table[month] || {})[c] || 0, a = avgOther(table, c, month), d = v - a;
+          const tag = Math.abs(d) >= 50 && a ? ` <b class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '-'}${money(Math.abs(d))}</b>` : '';
+          return `<div class="r${v ? '' : ' dim'}"><span>${c}</span><span><b>${money(v)}</b> · ${income ? Math.round(100 * v / income) : 0}%${tag}</span></div>`;
+        }).join('');
+        const cellTip = (r, c) => {
+          const income = r.income, label = c.label.replace(/\s*\(\d+%\)/, '');
+          if (c.kind === 'savings') {
+            return `<div class="t">${monthLong(r.month)} · Savings ${Math.round(r.shares[c.key])}%</div>` +
+              `<div class="r"><span>Take-home</span><b>${money(income)}</b></div><div class="r"><span>Spent</span><b>-${money(r.spending)}</b></div>` +
+              `<div class="r"><span>Not spent</span><b>${money(income - r.spending)}</b></div>` +
+              (r.asset_sales ? `<div class="sub">+${money(r.asset_sales)} arrived from a tracking account; excluded.</div>` : '') +
+              `<div class="sub">Whatever was not consumed, wherever it sits.</div>`;
+          }
+          if (c.kind === 'invested') {
+            const cats = Object.keys(bmsc[r.month] || {}).sort((a, b) => (bmsc[r.month][b] || 0) - (bmsc[r.month][a] || 0));
+            return `<div class="t">${monthLong(r.month)} · Invested ${Math.round(r.shares[c.key])}%</div>` +
+              (cats.length ? rowsHtml(bmsc, cats, r.month, income) : `<div class="r"><span>Moved to savings groups</span><b>${money(((cf.by_month.find(x => x.month === r.month) || {}).saved) || 0)}</b></div><div class="sub">Per-category detail appears after the next refresh.</div>`);
+          }
+          const cats = Object.keys(cg).filter(k => cg[k] === c.key);
+          const withAmt = cats.map(k => [k, (bmc[r.month] || {})[k] || 0]).sort((a, b) => b[1] - a[1]);
+          const shown = withAmt.filter(([, v]) => v).slice(0, 10).map(([k]) => k);
+          const total = withAmt.reduce((s, [, v]) => s + v, 0);
+          return `<div class="t">${monthLong(r.month)} · ${label} ${money(total)} · ${Math.round(r.shares[c.key])}% of take-home</div>` + rowsHtml(bmc, shown, r.month, income) +
+            (withAmt.length > shown.length ? `<div class="sub">${withAmt.length - shown.length} smaller or empty categories hidden.</div>` : '') +
+            `<div class="sub">Deltas are against the category's average over the other ${months.length - 1} months.</div>`;
+        };
+        const hoverable = (el, r, c) => { el.classList.add('hov'); el.tabIndex = 0;
+          el.addEventListener('mousemove', ev => showTip(ev.clientX, ev.clientY, cellTip(r, c)));
+          el.addEventListener('mouseleave', hideTip);
+          el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, cellTip(r, c)); });
+          el.addEventListener('blur', hideTip); return el; };
+        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's take-home. Savings is what was not spent, wherever it sits; Invested is what actually moved into the savings groups. Money arriving from a brokerage sale is neither income nor saving. Green meets the target in the group's name, red misses it. Hover a cell for what made it up.`),
           $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
             $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Take-home'), $('th', { class: 'n' }, 'Spent'))),
             $('tbody', {},
               ...bmk.rows.map(r => $('tr', {}, $('td', {}, monthName(r.month)),
-                ...cols.map(c => $('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%')),
+                ...cols.map(c => hoverable($('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%'), r, c)),
                 $('td', { class: 'n' }, money(r.income), r.asset_sales ? $('span', { class: 'chip', title: 'arrived from a tracking account; not counted as income' }, `+${money(r.asset_sales)} sale`) : null),
                 $('td', { class: 'n' }, money(r.spending)))),
               $('tr', { class: 'avg' }, $('td', {}, '12 months'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, '')),
