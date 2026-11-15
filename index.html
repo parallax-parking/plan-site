@@ -298,15 +298,16 @@ window.renderPlan = function (B) {
       if (bmk) {
         const cols = bmk.columns;
         const tgt = c => c.target == null ? '' : `${c.direction === 'at_most' ? '≤' : '≥'} ${Math.round(c.target * 100)}%`;
-        panel.append($('p', { class: 'lede' }, `Each month's outflow split by group, as a share of that month's total. Green meets the target in the group's name, red misses it; groups without a target are uncolored.`),
+        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's take-home. Savings is what was not spent, wherever it sits; Invested is what actually moved into the savings groups. Money arriving from a brokerage sale is neither income nor saving. Green meets the target in the group's name, red misses it.`),
           $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
-            $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Total outflow'))),
+            $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Take-home'), $('th', { class: 'n' }, 'Spent'))),
             $('tbody', {},
               ...bmk.rows.map(r => $('tr', {}, $('td', {}, monthName(r.month)),
                 ...cols.map(c => $('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%')),
-                $('td', { class: 'n' }, money(r.total_outflow)))),
-              $('tr', { class: 'avg' }, $('td', {}, 'Average'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n' }, '')),
-              $('tr', { class: 'avg' }, $('td', {}, 'Savings rate of take-home'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' }, `${pct(cf.totals.savings_rate)} over the 12 months · median month ${pct(bmk.median_savings_rate)}`), $('td', {}))))));
+                $('td', { class: 'n' }, money(r.income), r.asset_sales ? $('span', { class: 'chip', title: 'arrived from a tracking account; not counted as income' }, `+${money(r.asset_sales)} sale`) : null),
+                $('td', { class: 'n' }, money(r.spending)))),
+              $('tr', { class: 'avg' }, $('td', {}, '12 months'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, '')),
+              $('tr', { class: 'avg' }, $('td', {}, 'Savings rate of take-home'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' }, `${pct(cf.totals.savings_rate)} over the 12 months · median month ${pct(bmk.median_savings_rate)}`), $('td', { colspan: 2 }))))));
       } else panel.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
       app.append(panel);
     }
