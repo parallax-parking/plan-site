@@ -80,6 +80,18 @@ a { color: var(--accent); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
 .dot.warn { background: var(--warn); } .dot.crit { background: var(--crit); }
 
+/* Section nav */
+.secnav { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; padding: 8px 0 0; }
+.secnav a { color: var(--ink-2); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
+.secnav a:hover { color: var(--ink); border-bottom-color: var(--line); }
+.alloc { display: flex; height: 18px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surface-2); }
+.alloc i { display: block; height: 100%; min-width: 2px; }
+.flags { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.flags li { display: grid; grid-template-columns: 8px 1fr; gap: 10px; align-items: start; font-size: 13.5px; }
+.flags li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--ink-3); }
+.flags li.high::before { background: var(--crit); } .flags li.medium::before { background: var(--warn); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
 /* Panels */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px; min-width: 0; }
 .panel h2 { font-family: var(--font-display); font-weight: 700; font-size: 17px; margin: 0 0 4px; text-wrap: balance; }
@@ -230,6 +242,9 @@ window.renderPlan = function (B) {
     )
   ));
 
+  const sections = [['question', 'Overview'], ['switch', 'Simulation'], ['cashflow', 'Cash flow'], ['spending', 'Spending'], ['balance', 'Balance sheet'], ['portfolio', 'Portfolio'], ['quality', 'Data quality']];
+  app.append($('nav', { class: 'secnav', 'aria-label': 'Sections' }, ...sections.filter(([id]) => id !== 'portfolio' || B.holdings).map(([id, label]) => $('a', { href: '#' + id }, label))));
+
   // ---------- the question ----------
   const scenarios = sc ? sc.scenarios : [];
   const stay = sc ? sc.stay : null;
@@ -248,7 +263,7 @@ window.renderPlan = function (B) {
     );
   }
   const runway = nw.runway;
-  app.append($('section', { class: 'panel question' },
+  app.append($('section', { class: 'panel question', id: 'question' },
     $('p', { class: 'eyebrow' }, 'The question'),
     $('h2', {}, 'Can the current life run on an apprentice wage?'),
     verdict,
@@ -272,7 +287,7 @@ window.renderPlan = function (B) {
     const chartHost = $('div', { class: 'chart' });
     const seg = $('div', { class: 'seg', role: 'group', 'aria-label': 'Metric' },
       ...[['reachable', 'Reachable assets'], ['net_worth', 'Net worth']].map(([k, l]) => $('button', { type: 'button', id: 'metric-' + k, 'aria-pressed': String(k === metric), onclick: () => { metric = k; seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'metric-' + k))); drawScenario(); } }, l)));
-    const panel = $('section', { class: 'panel' },
+    const panel = $('section', { class: 'panel', id: 'switch' },
       $('div', { class: 'head' }, $('div', {}, $('p', { class: 'eyebrow' }, 'The switch'), $('h2', {}, `${horizonY}-year projection, today's dollars`)), seg),
       $('p', { class: 'lede' }, `Each line is what you could reach without penalty if you took that path. Dotted vertical: the switch starts. Wages, extra costs and the ${(sc.baseline.annual_return * 100).toFixed(0)}% real return come from plan/assumptions.toml.`),
       $('div', { class: 'legend' }, ...series.map(s => $('span', {}, $('i', { class: 'sw', style: `background:var(${s.color})` }), s.label))),
@@ -360,7 +375,7 @@ window.renderPlan = function (B) {
   {
     const months = cf.by_month;
     const host = $('div', { class: 'chart' });
-    const panel = $('section', { class: 'panel' },
+    const panel = $('section', { class: 'panel', id: 'cashflow' },
       $('p', { class: 'eyebrow' }, 'Cash flow'),
       $('h2', {}, `Income vs. spending, ${cf.window.label}`),
       $('p', { class: 'lede' }, `Take-home ${money(cf.totals.monthly_income)}/mo on average, ${money(cf.totals.monthly_spending)}/mo spent, ${money(cf.totals.monthly_saved)}/mo moved to savings. Spending is net of refunds; transfers between your own accounts are excluded.`),
@@ -419,7 +434,7 @@ window.renderPlan = function (B) {
         $('td', { class: 'n' }, money(v), $('span', { style: 'color:var(--ink-3);font-size:11px' }, `  ${p}%`)));
     }
     const ff = cf.floor_flex;
-    two.append($('section', { class: 'panel' },
+    two.append($('section', { class: 'panel', id: 'spending' },
       $('p', { class: 'eyebrow' }, 'Where it goes'),
       $('h2', {}, 'Spending per month, by group'),
       $('p', { class: 'lede' }, ff ? `Floor groups (${ff.floor_groups.join(', ')}) cost ${money(ff.floor_monthly)}/mo, ${ff.floor_pct_of_spending}% of spending. Everything else is ${money(ff.flex_monthly)}/mo of choices.` : 'Set floor_groups in plan/config.json to split structural from discretionary.'),
@@ -431,7 +446,7 @@ window.renderPlan = function (B) {
     const hist = B.networth_history || [];
     const host = $('div', { class: 'chart' });
     const t = nw.totals, bc = t.by_class;
-    const panel = $('section', { class: 'panel' },
+    const panel = $('section', { class: 'panel', id: 'balance' },
       $('p', { class: 'eyebrow' }, 'Balance sheet'),
       $('h2', {}, `Net worth ${money(t.net_worth)}`),
       $('p', { class: 'lede' }, `Reachable without penalty ${money(t.reachable)}; retirement ${money(bc.retirement)}${bc.debt ? `; debts ${money(bc.debt)}` : ''}. Solid points are saved snapshots; the faint line before them is reconstructed from transactions.`),
@@ -480,9 +495,59 @@ window.renderPlan = function (B) {
     two.append(panel);
   }
 
+  // ---------- portfolio ----------
+  if (B.holdings) {
+    const H = B.holdings, conc = H.concentration;
+    const classMeta = { us_equity: ['US equity index', '--s-stay'], intl_equity: ['International equity', '--s-reach'], bonds: ['Bonds', '--s-3'],
+      cash: ['Cash & money market', '--line'], fund_other: ['Other funds', '--s-2'], single_stock: ['Single stocks', '--s-1'], employer_stock: ['Employer stock', '--s-out'], unknown: ['Unclassified', '--ink-3'] };
+    const classes = Object.entries(H.by_class).filter(([, v]) => v.value > 0).sort((a, b) => b[1].value - a[1].value);
+    const bar = $('div', { class: 'alloc', role: 'img', 'aria-label': 'Allocation by asset class' },
+      ...classes.map(([c, v]) => $('i', { style: `width:${v.pct}%;background:var(${classMeta[c][1]})`, title: `${classMeta[c][0]} ${v.pct}%` })));
+    const legend = $('div', { class: 'legend' }, ...classes.map(([c, v]) => $('span', {}, $('i', { class: 'swatch', style: `background:var(${classMeta[c][1]})` }), `${classMeta[c][0]} ${v.pct}%`)));
+    const taxRows = Object.entries(H.by_tax).filter(([, v]) => v.value > 0);
+    const panel = $('section', { class: 'panel', id: 'portfolio' },
+      $('p', { class: 'eyebrow' }, 'Portfolio'),
+      $('h2', {}, `How ${money(H.total)} is deployed`),
+      $('p', { class: 'lede' }, `From your brokerage exports as of ${H.as_of}: ${H.position_count} positions across ${H.accounts.length} accounts. Classified by ticker; employer stock is called out on its own.`),
+      $('div', { class: 'tiles', style: 'margin:0 0 18px' },
+        tile('Cash & money market', conc.cash_pct + '%', money(H.by_class.cash.value)),
+        tile('Employer stock', conc.employer_pct + '%', conc.employer_pct ? money(H.by_class.employer_stock.value) : 'none'),
+        tile('Largest holding (ex cash)', conc.largest_pct + '%', conc.largest_symbol || ''),
+        tile('Broad index + bonds', (H.by_class.us_equity.pct + H.by_class.intl_equity.pct + H.by_class.bonds.pct).toFixed(1) + '%', 'us, international, fixed income'),
+        H.taxable_unrealized_gain ? tile('Unrealized gain, taxable', money(H.taxable_unrealized_gain), 'tax due on sale, long-term rates if held > 1 yr') : null),
+      bar, $('div', { style: 'height:8px' }), legend);
+    if (H.target_drift) {
+      panel.append($('h2', { style: 'font-size:15px;margin-top:16px' }, 'Against your target'),
+        $('div', { class: 'tbl-wrap' }, $('table', {},
+          $('thead', {}, $('tr', {}, $('th', {}, 'Class'), $('th', { class: 'n' }, 'Target'), $('th', { class: 'n' }, 'Actual'), $('th', { class: 'n' }, 'Drift'), $('th', { class: 'n' }, 'To target'))),
+          $('tbody', {}, ...H.target_drift.map(d => $('tr', {}, $('td', {}, classMeta[d.asset_class][0]), $('td', { class: 'n' }, d.target_pct + '%'), $('td', { class: 'n' }, d.actual_pct + '%'),
+            $('td', { class: 'n ' + cls(-Math.abs(d.drift_pct) < -5 ? -1 : 0) }, (d.drift_pct > 0 ? '+' : '') + d.drift_pct + ' pts'), $('td', { class: 'n' }, signed(d.dollars_to_target))))))));
+    }
+    if (H.flags && H.flags.length) {
+      panel.append($('h2', { style: 'font-size:15px;margin-top:16px' }, 'Worth a conversation'),
+        $('ul', { class: 'flags' }, ...H.flags.map(f => $('li', { class: f.severity }, f.text))));
+    }
+    panel.append($('h2', { style: 'font-size:15px;margin-top:16px' }, 'By account'),
+      $('div', { class: 'tbl-wrap' }, $('table', {},
+        $('thead', {}, $('tr', {}, $('th', {}, 'Account'), $('th', {}, 'Tax'), $('th', { class: 'n' }, 'Value'), $('th', {}, 'Top holding'), $('th', { class: 'n' }, 'YNAB'), $('th', { class: 'n' }, 'Diff'))),
+        $('tbody', {}, ...H.accounts.map(a => $('tr', {},
+          $('td', {}, `${a.custodian} ${a.label}`, $('span', { class: 'chip' }, '…' + a.account_last4)),
+          $('td', {}, a.tax), $('td', { class: 'n' }, money(a.value)),
+          $('td', {}, `${a.top_symbol} ${a.top_pct_of_account}%`),
+          $('td', { class: 'n' }, a.ynab_balance == null ? '—' : money(a.ynab_balance)),
+          $('td', { class: 'n ' + (a.ynab_diff_pct >= 5 && Math.abs(a.ynab_diff) >= 1000 ? 'neg' : '') }, a.ynab_diff == null ? '—' : signed(a.ynab_diff)))),
+          $('tr', { class: 'total' }, $('td', { colspan: 2 }, 'Investable total'), $('td', { class: 'n' }, money(H.total)), $('td', { colspan: 3 }))))),
+      $('h2', { style: 'font-size:15px;margin-top:16px' }, 'By tax bucket'),
+      $('div', { class: 'tbl-wrap' }, $('table', {}, $('tbody', {}, ...taxRows.map(([t, v]) => $('tr', {}, $('td', {}, t), $('td', { class: 'n' }, money(v.value)), $('td', { class: 'n' }, v.pct + '%')))))),
+      $('details', {}, $('summary', {}, 'All positions'), $('div', { class: 'tbl-wrap' }, $('table', {},
+        $('thead', {}, $('tr', {}, $('th', {}, 'Symbol'), $('th', {}, 'Description'), $('th', {}, 'Class'), $('th', {}, 'Accounts'), $('th', { class: 'n' }, 'Value'), $('th', { class: 'n' }, '%'))),
+        $('tbody', {}, ...H.top_positions.map(p => $('tr', {}, $('td', {}, p.symbol), $('td', {}, p.description), $('td', {}, classMeta[p.asset_class][0]), $('td', {}, p.accounts.join(', ')), $('td', { class: 'n' }, money(p.value)), $('td', { class: 'n' }, p.pct_of_total + '%'))))))));
+    app.append(panel);
+  }
+
   // ---------- footer notes ----------
   const dq = cf.data_quality || {}, ex = cf.excluded || {};
-  app.append($('section', { class: 'panel' },
+  app.append($('section', { class: 'panel', id: 'quality' },
     $('p', { class: 'eyebrow' }, 'Data quality'),
     $('ul', { class: 'notes' },
       $('li', {}, dq.uncategorized_count ? `${dq.uncategorized_count} uncategorized transactions (${money(dq.uncategorized_total)}) counted against net but in no group.` : 'No uncategorized transactions in the window.'),
@@ -490,6 +555,7 @@ window.renderPlan = function (B) {
       staleList.length ? $('li', {}, `Stale tracking accounts: ${staleList.join(', ')}. Their balances are whatever was last typed into YNAB.`) : null,
       ledgerDays != null && ledgerDays > 7 ? $('li', {}, `YNAB's newest on-budget transaction is ${ledgerDays} days old. Bank imports pause when the app isn't opened; open YNAB, let it sync, and re-run the workflow.`) : null,
       $('li', {}, `Income here is take-home; pre-tax 401k and health premiums never reach YNAB. The projection adds them back via employer_retirement_monthly in the assumptions.`),
+      B.holdings ? $('li', {}, `Portfolio holdings from exports dated ${B.holdings.as_of}; re-import after your next statement.`) : $('li', {}, 'No portfolio holdings yet: import brokerage exports with scripts/holdings.py.'),
       $('li', {}, `Generated ${B.generated_at.replace('T', ' ').replace('Z', ' UTC')}.`)
     )
   ));
