@@ -90,6 +90,11 @@ a { color: var(--accent); }
 .flags li { display: grid; grid-template-columns: 8px 1fr; gap: 10px; align-items: start; font-size: 13.5px; }
 .flags li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--ink-3); }
 .flags li.high::before { background: var(--crit); } .flags li.medium::before { background: var(--warn); } .flags li.info::before { background: var(--s-stay); }
+.bm td.ok { background: color-mix(in oklab, var(--good) 22%, var(--surface)); }
+.bm td.over, .bm td.under { background: color-mix(in oklab, var(--crit) 22%, var(--surface)); }
+.bm td.ok, .bm td.over, .bm td.under { font-weight: 500; }
+.bm th .t { display: block; font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--ink-3); font-weight: 500; }
+.bm tr.avg td { border-top: 1px solid var(--line); font-weight: 600; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 
 /* Panels */
@@ -284,35 +289,26 @@ window.renderPlan = function (B) {
     const sc = P.scorecard, L = P.liquidity, G = P.goals;
     const monthLabel = ym => monthLong(ym);
     const two = $('div', { class: 'grid-2' });
-    // Scorecard
-    if (sc) {
-      const m = sc.month, t = sc.trailing, d = sc.deltas;
+    // Scorecard: monthly benchmarking against the allocation targets
+    const bmk = P.benchmark;
+    {
       const panel = $('section', { class: 'panel', id: 'scorecard' },
         $('p', { class: 'eyebrow' }, 'Scorecard'),
-        $('h2', {}, `${monthLabel(m.month)} against your own average`),
-        $('p', { class: 'lede' }, `Last complete month next to the ${t.months}-month average before it. Drift is flagged at 15% and $100 over average; streak counts consecutive months above it.`),
-        $('div', { class: 'tbl-wrap' }, $('table', {},
-          $('thead', {}, $('tr', {}, $('th', {}, ''), $('th', { class: 'n' }, 'Month'), $('th', { class: 'n' }, 'Average'), $('th', { class: 'n' }, 'Delta'))),
-          $('tbody', {},
-            $('tr', {}, $('td', {}, 'Income'), $('td', { class: 'n' }, money(m.income)), $('td', { class: 'n' }, money(t.income)), $('td', { class: 'n ' + cls(d.income) }, signed(d.income))),
-            $('tr', {}, $('td', {}, 'Spending'), $('td', { class: 'n' }, money(m.spending)), $('td', { class: 'n' }, money(t.spending)), $('td', { class: 'n ' + cls(-d.spending) }, signed(d.spending))),
-            $('tr', {}, $('td', {}, 'Net'), $('td', { class: 'n' }, money(m.net)), $('td', { class: 'n' }, money(t.net)), $('td', { class: 'n ' + cls(d.net) }, signed(d.net))),
-            $('tr', {}, $('td', {}, 'Savings rate'), $('td', { class: 'n' }, pct(m.savings_rate)), $('td', { class: 'n' }, pct(t.savings_rate)), $('td', { class: 'n' }, 'target ' + pct(sc.savings_rate_target)))))));
-      if (sc.groups && sc.groups.length) {
-        panel.append($('h2', { style: 'font-size:15px;margin-top:16px' }, 'By group'),
-          $('div', { class: 'tbl-wrap' }, $('table', {},
-            $('thead', {}, $('tr', {}, $('th', {}, 'Group'), $('th', { class: 'n' }, 'Month'), $('th', { class: 'n' }, 'Avg'), $('th', { class: 'n' }, 'Delta'), $('th', {}, ''))),
-            $('tbody', {}, ...sc.groups.map(g => $('tr', {},
-              $('td', {}, g.group, g.floor ? $('span', { class: 'chip' }, 'floor') : null),
-              $('td', { class: 'n' }, money(g.month)), $('td', { class: 'n' }, money(g.avg)),
-              $('td', { class: 'n ' + cls(-g.delta) }, signed(g.delta)),
-              $('td', {}, g.over_cap ? $('span', { class: 'chip warn' }, `${money(g.over_cap)} over cap`) : null,
-                g.drift === 'up' ? $('span', { class: 'chip warn' }, g.streak_above_avg > 1 ? `${g.streak_above_avg} months up` : 'up') : g.drift === 'down' ? $('span', { class: 'chip' }, 'down') : null)))))));
-        if (sc.movers && sc.movers.length) panel.append($('h2', { style: 'font-size:15px;margin-top:16px' }, 'Biggest movers'),
-          $('div', { class: 'tbl-wrap' }, $('table', {}, $('tbody', {}, ...sc.movers.slice(0, 6).map(x => $('tr', {},
-            $('td', {}, x.category, $('span', { class: 'chip' }, x.group || '')), $('td', { class: 'n' }, money(x.month)), $('td', { class: 'n' }, `avg ${money(x.avg)}`), $('td', { class: 'n ' + cls(-x.delta) }, signed(x.delta))))))));
-      } else panel.append($('p', { class: 'lede', style: 'margin-top:12px' }, 'Per-group drift and movers appear after the next weekly cash-flow refresh.'));
-      two.append(panel);
+        $('h2', {}, 'Monthly benchmarking'));
+      if (bmk) {
+        const cols = bmk.columns;
+        const tgt = c => c.target == null ? '' : `${c.direction === 'at_most' ? '≤' : '≥'} ${Math.round(c.target * 100)}%`;
+        panel.append($('p', { class: 'lede' }, `Each month's outflow split by group, as a share of that month's total. Green meets the target in the group's name, red misses it; groups without a target are uncolored.`),
+          $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
+            $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Total outflow'))),
+            $('tbody', {},
+              ...bmk.rows.map(r => $('tr', {}, $('td', {}, monthName(r.month)),
+                ...cols.map(c => $('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%')),
+                $('td', { class: 'n' }, money(r.total_outflow)))),
+              $('tr', { class: 'avg' }, $('td', {}, 'Average'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n' }, '')),
+              $('tr', { class: 'avg' }, $('td', {}, 'Savings rate of take-home'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' }, `${pct(cf.totals.savings_rate)} over the 12 months · median month ${pct(bmk.median_savings_rate)}`), $('td', {}))))));
+      } else panel.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
+      app.append(panel);
     }
     // Liquidity
     {
@@ -329,7 +325,6 @@ window.renderPlan = function (B) {
         L.tier1_gap > 0 ? $('p', { class: 'sub', style: 'margin:6px 0 0;font-size:12.5px;color:var(--ink-3)' }, `Tier 1 is ${money(L.tier1_gap)} short of the target. Retirement accounts (${money(L.retirement_excluded)}) are not counted.`) : null);
       two.append(panel);
     }
-    app.append(two);
     // Goals
     {
       const fi = G.fi, sr = G.savings_rate, R = G.retirement;
@@ -344,8 +339,9 @@ window.renderPlan = function (B) {
           tile('Years to FI', fi.years_to_fi == null ? 'n/a' : String(fi.years_to_fi), `${money(fi.annual_savings_used)}/yr saved, ${Math.round(fi.real_return * 100)}% real`),
           R ? tile(`At ${R.retirement_age}`, money(R.projected_investable), R.on_track ? `on track (${R.years} yrs)` : `short by ${money(R.shortfall)}`) : tile('Retirement', 'set birth_year', 'in plan/assumptions.toml')),
         $('p', { class: 'lede', style: 'margin:0' }, `Everything in today's dollars. "Saved" is last year's net to the budget plus pre-tax retirement contributions; windfalls are in it, so a year without one lowers the pace.`));
-      app.append(panel);
+      two.append(panel);
     }
+    app.append(two);
   }
 
   // ---------- scenarios ----------
