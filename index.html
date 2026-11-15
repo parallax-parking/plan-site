@@ -261,7 +261,7 @@ window.renderPlan = function (B) {
   ));
 
   const P = B.planning;
-  const sections = [['question', 'Overview'], ['scorecard', 'Scorecard'], ['liquidity', 'Liquidity'], ['goals', 'Goals'], ['switch', 'Simulation'], ['cashflow', 'Cash flow'], ['spending', 'Spending'], ['balance', 'Balance sheet'], ['portfolio', 'Portfolio'], ['quality', 'Data quality']];
+  const sections = [['question', 'Overview'], ['scorecard', 'Scorecard'], ['liquidity', 'Liquidity'], ['goals', 'Goals'], ['cashflow', 'Cash flow'], ['spending', 'Spending'], ['balance', 'Balance sheet'], ['portfolio', 'Portfolio'], ['quality', 'Data quality']];
   app.append($('nav', { class: 'secnav', 'aria-label': 'Sections' }, ...sections.filter(([id]) => (id !== 'portfolio' || B.holdings) && (!['scorecard', 'liquidity', 'goals'].includes(id) || P)).map(([id, label]) => $('a', { href: '#' + id }, label))));
 
   // ---------- the question ----------
@@ -349,7 +349,9 @@ window.renderPlan = function (B) {
             return `<div class="t">${monthLong(r.month)} · Savings ${Math.round(r.shares[c.key])}% of pay</div>` +
               `<div class="r"><span>Moved into savings groups</span><b>${money(r.invested)}</b></div>` + where +
               (r.pool_draw ? `<div class="r"><span>Funded by sale proceeds / other income</span><b>-${money(r.pool_draw)}</b></div>` : '') +
+              (r.opening_draw ? `<div class="r"><span>Funded by cash from before the budget</span><b>-${money(r.opening_draw)}</b></div>` : '') +
               `<div class="r"><span>Savings from pay</span><b>${money(r.savings_from_pay)}</b></div>` +
+              (r.banked_pay_used ? `<div class="sub">${money(r.banked_pay_used)} of that is pay left unspent in earlier months, invested now.</div>` : '') +
               (r.pool_after ? `<div class="sub">${money(r.pool_after)} of sale/other proceeds still unattributed, carried to next month.</div>` : '') +
               `<div class="sub">Pay ${money(r.pay)} · spent ${money(r.spending)}${r.leftover < 0 ? ` · spending plus savings exceeded pay by ${money(-r.leftover)}` : ''}.</div>`;
           }
@@ -379,7 +381,7 @@ window.renderPlan = function (B) {
           el.addEventListener('mouseleave', hideTip);
           el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, cellTip(r, c)); });
           el.addEventListener('blur', hideTip); return el; };
-        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's regular pay. Savings is what you deliberately moved into the savings groups out of pay; proceeds from brokerage sales and other income (a refund, a one-off) form a pool that those transfers draw from first, so they never count. Bills in sale-funded categories (the tax bill) are paid from that pool too, and the covered part is left out. Green meets the target in the group's name, red misses it. Running net adds up pay minus spending minus savings month by month: near zero means money only shifted between months, a steady slide means outflows are outrunning pay. Hover a cell for what made it up.`),
+        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's regular pay. Savings is what you deliberately moved into the savings groups out of pay; proceeds from brokerage sales and other income (a refund, a one-off) form a pool that those transfers draw from first, so they never count; neither do transfers that only cash on hand from before the budget could have funded. Bills in sale-funded categories (the tax bill) are paid from that pool too, and the covered part is left out. Green meets the target in the group's name, red misses it. Running net adds up pay minus spending minus savings month by month: near zero means money only shifted between months, a steady slide means outflows are outrunning pay. Hover a cell for what made it up.`),
           $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
             $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Pay', $('span', { class: 't' }, 'recurring payroll')), $('th', { class: 'n' }, 'Spent'), $('th', { class: 'n' }, 'Running net', $('span', { class: 't' }, 'cumulative')))),
             $('tbody', {},
@@ -396,7 +398,7 @@ window.renderPlan = function (B) {
               ))),
           $('p', { class: 'bm-note' }, $('b', {}, `Savings, ${view.span}: `),
                 bmk.pay_savings_rate == null ? `${pct(bmk.trailing_savings_rate)} of all income kept` :
-                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(bmk.trailing_savings_rate)} of all income kept`));
+                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other${bmk.total_opening_draw ? `, ${money(bmk.total_opening_draw)} from cash on hand before the budget` : ''}) · ${pct(bmk.trailing_savings_rate)} of all income kept`));
       };
       if (views.length) drawBench(views.find(v => v.key === viewKey));
       else body.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
