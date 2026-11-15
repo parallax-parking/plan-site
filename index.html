@@ -332,13 +332,7 @@ window.renderPlan = function (B) {
               (r.pool_draw ? `<div class="r"><span>Funded by sale proceeds / other income</span><b>-${money(r.pool_draw)}</b></div>` : '') +
               `<div class="r"><span>Savings from pay</span><b>${money(r.savings_from_pay)}</b></div>` +
               (r.pool_after ? `<div class="sub">${money(r.pool_after)} of sale/other proceeds still unattributed, carried to next month.</div>` : '') +
-              `<div class="sub">Pay ${money(r.pay)} · spent ${money(r.spending)} · left over ${money(r.leftover)}.</div>`;
-          }
-          if (c.kind === 'leftover') {
-            return `<div class="t">${monthLong(r.month)} · Left over ${Math.round(r.shares[c.key])}% of pay</div>` +
-              `<div class="r"><span>Regular pay</span><b>${money(r.pay)}</b></div><div class="r"><span>Spent</span><b>-${money(r.spending)}</b></div>` +
-              `<div class="r"><span>Savings from pay</span><b>-${money(r.savings_from_pay)}</b></div><div class="r"><span>Stayed in checking</span><b>${money(r.leftover)}</b></div>` +
-              `<div class="sub">${r.leftover < 0 ? 'Negative: the month spent or saved more than pay brought in, drawing on balances.' : 'Pay not spent and not yet moved to a savings group.'}</div>`;
+              `<div class="sub">Pay ${money(r.pay)} · spent ${money(r.spending)}${r.leftover < 0 ? ` · spending plus savings exceeded pay by ${money(-r.leftover)}` : ''}.</div>`;
           }
           const cats = Object.keys(cg).filter(k => cg[k] === c.key);
           const withAmt = cats.map(k => [k, (bmc[r.month] || {})[k] || 0]).sort((a, b) => b[1] - a[1]);
@@ -353,7 +347,7 @@ window.renderPlan = function (B) {
           el.addEventListener('mouseleave', hideTip);
           el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, cellTip(r, c)); });
           el.addEventListener('blur', hideTip); return el; };
-        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's regular pay. Savings is what you deliberately moved into the savings groups out of pay; proceeds from brokerage sales and other income (a refund, a one-off) form a pool that those transfers draw from first, so they never count. Left over is pay that stayed in checking; negative means the month drew on balances. Green meets the target in the group's name, red misses it. Hover a cell for what made it up.`),
+        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's regular pay. Savings is what you deliberately moved into the savings groups out of pay; proceeds from brokerage sales and other income (a refund, a one-off) form a pool that those transfers draw from first, so they never count. Green meets the target in the group's name, red misses it. Hover a cell for what made it up.`),
           $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
             $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Pay', $('span', { class: 't' }, 'recurring payroll')), $('th', { class: 'n' }, 'Spent'))),
             $('tbody', {},
@@ -368,7 +362,7 @@ window.renderPlan = function (B) {
               $('tr', { class: 'avg' }, $('td', {}, '12 months'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, '')),
               $('tr', { class: 'avg' }, $('td', {}, 'Savings, 12 months'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' },
                 bmk.pay_savings_rate == null ? `${pct(cf.totals.savings_rate)} of all income kept` :
-                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(bmk.pay_unspent_rate)} of pay unspent · ${pct(cf.totals.savings_rate)} of all income kept`), $('td', { colspan: 2 }))))));
+                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(cf.totals.savings_rate)} of all income kept`), $('td', { colspan: 2 }))))));
       } else panel.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
       app.append(panel);
     }
