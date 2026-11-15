@@ -247,6 +247,8 @@ window.renderPlan = function (B) {
     $('div', { class: 'fresh' },
       $('span', { class: 'pill' }, $('i', { class: 'dot ' + ledgerState }), ledgerDays == null ? 'YNAB ledger age unknown' : `YNAB ledger: last transaction ${ledgerDays}d ago`),
       $('span', { class: 'pill' }, $('i', { class: 'dot ' + (staleList.length ? 'warn' : '') }), staleList.length ? `${staleList.length} tracking account${staleList.length > 1 ? 's' : ''} stale` : 'tracking accounts current'),
+      (() => { const a = B.audit; if (!a) return null; const c = a.counts || {}; const n = c.high + c.medium + c.low;
+        const state = c.high ? 'crit' : c.medium ? 'warn' : ''; return $('a', { class: 'pill', href: '#quality', style: 'text-decoration:none;color:inherit' }, $('i', { class: 'dot ' + state }), n ? `ledger: ${n} finding${n > 1 ? 's' : ''}${c.high ? ` (${c.high} high)` : ''}` : 'ledger audit clean'); })(),
       $('span', { class: 'pill' }, `reports as of ${nw.as_of}`)
     )
   ));
@@ -654,8 +656,19 @@ window.renderPlan = function (B) {
 
   // ---------- footer notes ----------
   const dq = cf.data_quality || {}, ex = cf.excluded || {};
+  const auditBlock = (() => {
+    const a = B.audit; if (!a) return $('p', { class: 'lede' }, 'Ledger audit runs with the weekly workflow; no results yet.');
+    if (!a.findings.length) return $('p', { class: 'lede' }, `Ledger audit ${a.as_of}: ${a.txns_checked} transactions checked, nothing to fix.`);
+    return $('div', {}, $('p', { class: 'lede' }, `Ledger audit ${a.as_of}: ${a.txns_checked} transactions checked since ${a.window_start}. These are bookkeeping patterns that would distort the plan; each comes with the fix.`),
+      $('ul', { class: 'flags' }, ...a.findings.map(f => $('li', { class: f.severity },
+        $('div', {}, $('b', {}, f.rule.replace(/_/g, ' ')), f.date ? ` · ${f.date}` : '', f.account ? ` · ${f.account}` : '', ' — ', f.message,
+          $('div', { style: 'color:var(--ink-3);font-size:12.5px;margin-top:2px' }, 'Fix: ' + f.fix))))));
+  })();
   app.append($('section', { class: 'panel', id: 'quality' },
     $('p', { class: 'eyebrow' }, 'Data quality'),
+    $('h2', {}, 'Ledger audit'),
+    auditBlock,
+    $('h2', { style: 'font-size:15px;margin-top:16px' }, 'Report notes'),
     $('ul', { class: 'notes' },
       $('li', {}, dq.uncategorized_count ? `${dq.uncategorized_count} uncategorized transactions (${money(dq.uncategorized_total)}) counted against net but in no group.` : 'No uncategorized transactions in the window.'),
       $('li', {}, `Excluded from cash flow: ${ex.on_budget_transfer || 0} transfer legs between your own accounts, ${ex.off_budget_account || 0} tracking-account transactions, ${ex.starting_balance || 0} starting balances.`),
