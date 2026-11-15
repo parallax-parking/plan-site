@@ -315,20 +315,22 @@ window.renderPlan = function (B) {
         }).join('');
         const bmip = cf.by_month_income_payee || {};
         const incomeTip = r => {
+          const other = r.other_income_detail || {};
           const src = Object.entries(bmip[r.month] || {}).sort((a, b) => b[1] - a[1]);
-          const rows = src.map(([p, v]) => `<div class="r"><span>${p.length > 34 ? p.slice(0, 33) + '…' : p}</span><b>${money(v)}</b></div>`).join('');
-          return `<div class="t">${monthLong(r.month)} · take-home ${money(r.income)}</div>` + (rows || `<div class="sub">Per-payee detail appears after the next refresh.</div>`) +
+          const rows = src.map(([p, v]) => `<div class="r${p in other ? ' dim' : ''}"><span>${p.length > 30 ? p.slice(0, 29) + '…' : p}${p in other ? ' <i>(other)</i>' : ''}</span><b>${money(v)}</b></div>`).join('');
+          return `<div class="t">${monthLong(r.month)} · pay ${money(r.pay)}${r.other_income ? ` + other ${money(r.other_income)}` : ''}</div>` + (rows || `<div class="sub">Per-payee detail appears after the next refresh.</div>`) +
             (r.asset_sales ? `<div class="sub">Plus ${money(r.asset_sales)} transferred in from a tracking account (asset sale), not counted.</div>` : '') +
-            `<div class="sub">Every inflow to Ready to Assign that was not a transfer from a tracking account.</div>`;
+            `<div class="sub">Pay = recurring payroll payees (bonuses included). Other income is real money but not in the denominator.</div>`;
         };
         const cellTip = (r, c) => {
-          const income = r.income, label = c.label.replace(/\s*\(\d+%\)/, '');
+          const income = r.pay, label = c.label.replace(/\s*\(\d+%\)/, '');
           if (c.kind === 'savings') {
-            return `<div class="t">${monthLong(r.month)} · Savings ${Math.round(r.shares[c.key])}%</div>` +
-              `<div class="r"><span>Take-home</span><b>${money(income)}</b></div><div class="r"><span>Spent</span><b>-${money(r.spending)}</b></div>` +
-              `<div class="r"><span>Not spent</span><b>${money(income - r.spending)}</b></div>` +
+            return `<div class="t">${monthLong(r.month)} · Savings ${Math.round(r.shares[c.key])}% of pay</div>` +
+              `<div class="r"><span>Regular pay</span><b>${money(r.pay)}</b></div><div class="r"><span>Spent</span><b>-${money(r.spending)}</b></div>` +
+              `<div class="r"><span>Pay left over</span><b>${money(r.pay - r.spending)}</b></div>` +
+              (r.other_income ? `<div class="sub">Plus ${money(r.other_income)} other income this month (${Object.keys(r.other_income_detail || {}).join(', ')}), also kept, not in the rate.</div>` : '') +
               (r.asset_sales ? `<div class="sub">+${money(r.asset_sales)} arrived from a tracking account; excluded.</div>` : '') +
-              `<div class="sub">Whatever was not consumed, wherever it sits.</div>`;
+              `<div class="sub">Whatever pay was not consumed, wherever it sits.</div>`;
           }
           if (c.kind === 'invested') {
             const cats = Object.keys(bmsc[r.month] || {}).sort((a, b) => (bmsc[r.month][b] || 0) - (bmsc[r.month][a] || 0));
@@ -339,7 +341,7 @@ window.renderPlan = function (B) {
           const withAmt = cats.map(k => [k, (bmc[r.month] || {})[k] || 0]).sort((a, b) => b[1] - a[1]);
           const shown = withAmt.filter(([, v]) => v).slice(0, 10).map(([k]) => k);
           const total = withAmt.reduce((s, [, v]) => s + v, 0);
-          return `<div class="t">${monthLong(r.month)} · ${label} ${money(total)} · ${Math.round(r.shares[c.key])}% of take-home</div>` + rowsHtml(bmc, shown, r.month, income) +
+          return `<div class="t">${monthLong(r.month)} · ${label} ${money(total)} · ${Math.round(r.shares[c.key])}% of pay</div>` + rowsHtml(bmc, shown, r.month, income) +
             (withAmt.length > shown.length ? `<div class="sub">${withAmt.length - shown.length} smaller or empty categories hidden.</div>` : '') +
             `<div class="sub">Deltas are against the category's average over the other ${months.length - 1} months.</div>`;
         };
@@ -348,18 +350,21 @@ window.renderPlan = function (B) {
           el.addEventListener('mouseleave', hideTip);
           el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, cellTip(r, c)); });
           el.addEventListener('blur', hideTip); return el; };
-        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's take-home. Savings is what was not spent, wherever it sits; Invested is what actually moved into the savings groups. Money arriving from a brokerage sale is neither income nor saving. Green meets the target in the group's name, red misses it. Hover a cell for what made it up.`),
+        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's regular pay. Savings is what pay left over, wherever it sits; Invested is what actually moved into the savings groups. Other income (a refund, a one-off) and brokerage sales are shown as chips and kept out of the denominator. Green meets the target in the group's name, red misses it. Hover a cell for what made it up.`),
           $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
-            $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Take-home'), $('th', { class: 'n' }, 'Spent'))),
+            $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Pay', $('span', { class: 't' }, 'recurring payroll')), $('th', { class: 'n' }, 'Spent'))),
             $('tbody', {},
               ...bmk.rows.map(r => $('tr', {}, $('td', {}, monthName(r.month)),
                 ...cols.map(c => hoverable($('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%'), r, c)),
-                (() => { const td = $('td', { class: 'n hov' }, money(r.income), r.asset_sales ? $('span', { class: 'chip', title: 'arrived from a tracking account; not counted as income' }, `+${money(r.asset_sales)} sale`) : null);
+                (() => { const td = $('td', { class: 'n hov' }, money(r.pay),
+                    r.other_income ? $('span', { class: 'chip', title: 'other income: ' + Object.keys(r.other_income_detail || {}).join(', ') + '. Real money, kept out of the denominator.' }, `+${money(r.other_income)} other`) : null,
+                    r.asset_sales ? $('span', { class: 'chip', title: 'arrived from a tracking account; not counted as income' }, `+${money(r.asset_sales)} sale`) : null);
                   td.tabIndex = 0; td.addEventListener('mousemove', ev => showTip(ev.clientX, ev.clientY, incomeTip(r))); td.addEventListener('mouseleave', hideTip);
                   td.addEventListener('focus', () => { const b = td.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, incomeTip(r)); }); td.addEventListener('blur', hideTip); return td; })(),
                 $('td', { class: 'n' }, money(r.spending)))),
               $('tr', { class: 'avg' }, $('td', {}, '12 months'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, '')),
-              $('tr', { class: 'avg' }, $('td', {}, 'Savings rate of take-home'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' }, `${pct(cf.totals.savings_rate)} over the 12 months · median month ${pct(bmk.median_savings_rate)}`), $('td', { colspan: 2 }))))));
+              $('tr', { class: 'avg' }, $('td', {}, 'Savings rate, 12 months'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' },
+                bmk.pay_savings_rate == null ? `${pct(cf.totals.savings_rate)} of all income` : `${pct(bmk.pay_savings_rate)} of pay · ${pct(cf.totals.savings_rate)} of all income${bmk.total_other_income ? ` (pay + ${money(bmk.total_other_income)} other)` : ''}`), $('td', { colspan: 2 }))))));
       } else panel.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
       app.append(panel);
     }
