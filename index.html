@@ -164,6 +164,11 @@ tr.sub td:first-child { padding-left: 22px; color: var(--ink-2); }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 details { border-top: 1px solid var(--line-2); margin-top: 10px; }
+details.how { border-top: 0; margin: -6px 0 12px; max-width: 78ch; }
+details.how summary { padding: 2px 0; }
+details.how ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+details.how li { margin: 3px 0; }
+details.how li b { color: var(--ink); font-weight: 600; }
 summary { cursor: pointer; padding: 8px 0; font-size: 13px; color: var(--ink-2); }
 .notes { font-size: 13px; color: var(--ink-2); margin: 0; padding-left: 18px; }
 .notes li { margin: 3px 0; }
@@ -314,6 +319,7 @@ window.renderPlan = function (B) {
       let viewKey = views.length ? views[0].key : null;
       try { const k = localStorage.getItem('plan.bench.view'); if (k && views.some(v => v.key === k)) viewKey = k; } catch (e) { /* storage unavailable */ }
       const body = $('div', {});
+      let howOpen = false;
       const seg = views.length > 1 ? $('div', { class: 'seg', role: 'group', 'aria-label': 'Period' },
         ...views.map(v => $('button', { type: 'button', 'data-k': v.key, 'aria-pressed': String(v.key === viewKey), onclick: () => {
           viewKey = v.key; try { localStorage.setItem('plan.bench.view', v.key); } catch (e) { /* ignore */ }
@@ -394,7 +400,12 @@ window.renderPlan = function (B) {
           el.addEventListener('mouseleave', hideTip);
           el.addEventListener('focus', () => { const b = el.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, cellTip(r, c)); });
           el.addEventListener('blur', hideTip); return el; };
-        panel.append($('p', { class: 'lede' }, `Spending by group as a share of that month's regular pay. Savings is what you deliberately moved into the savings groups out of pay; proceeds from brokerage sales and other income (a refund, a one-off) form a pool that those transfers draw from first, so they never count; neither do transfers that only cash on hand from before the budget could have funded. Bills in sale-funded categories (the tax bill) are paid from that pool too, and the covered part is left out. Green meets the target in the group's name, red misses it. Running net adds up pay minus spending minus savings month by month since your budget began, and reads the same in every period; the bottom row shows how much it moved within the period shown. As a rule: near zero means money only shifted between months, a steady slide means outflows are outrunning pay. The last row, when present, is the month in progress: its percentages are of a typical month's pay, so they show how much of this month's budget is used so far, and it is left out of the totals. Hover a cell for what made it up.`),
+        panel.append($('p', { class: 'lede' }, `Each month's spending and savings as a share of regular pay. Green meets the target, red misses it. Hover any cell for the detail.`),
+          (() => { const d = $('details', { class: 'how' }); d.open = howOpen; d.addEventListener('toggle', () => { howOpen = d.open; }); return d; })().appendChild($('summary', {}, 'How these numbers are worked out')).parentNode.appendChild($('ul', {},
+            $('li', {}, $('b', {}, 'Savings'), ' counts only money moved into the savings groups out of pay. Transfers funded by brokerage sales, other income, or cash you held before the budget began are not counted.'),
+            $('li', {}, $('b', {}, 'Paid from investments.'), ' The tax bill and listed one-off payments are covered by sale proceeds and left out of spending.'),
+            $('li', {}, $('b', {}, 'Running net'), ' adds up pay minus spending minus savings since the budget began. Near zero means money only shifted between months. A steady slide means outflows are outrunning pay. The bottom row shows the change within the period.'),
+            $('li', {}, $('b', {}, 'Month in progress'), ' (last row, italic) is measured against a typical month\'s pay and left out of the totals.'))).parentNode,
           $('div', { class: 'tbl-wrap' }, $('table', { class: 'bm' },
             $('thead', {}, $('tr', {}, $('th', {}, 'Month'), ...cols.map(c => $('th', { class: 'n' }, c.label.replace(/\s*\(\d+%\)/, ''), $('span', { class: 't' }, tgt(c)))), $('th', { class: 'n' }, 'Pay', $('span', { class: 't' }, 'recurring payroll')), $('th', { class: 'n' }, 'Spent'), $('th', { class: 'n' }, 'Running net', $('span', { class: 't' }, 'since ' + monthName(bmk.running_since || bmk.rows[0].month))))),
             $('tbody', {},
