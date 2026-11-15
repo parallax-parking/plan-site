@@ -96,6 +96,10 @@ a { color: var(--accent); }
 .bm th .t { display: block; font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--ink-3); font-weight: 500; }
 .bm tr.avg td { border-top: 1px solid var(--line); font-weight: 600; }
 .bm td.hov { cursor: help; }
+.bm { width: 100%; }
+.bm td:first-child { min-width: 0; white-space: nowrap; }
+.bm-note { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+.bm-note b { color: var(--ink); font-weight: 600; }
 .tip .sub { color: color-mix(in oklab, var(--bg) 70%, var(--ink)); font-size: 11px; margin-top: 3px; }
 .tip .r.dim { opacity: .7; }
 .tip .r b.up { color: #f0a0a0; } .tip .r b.dn { color: #a8e0a8; }
@@ -354,15 +358,15 @@ window.renderPlan = function (B) {
               ...bmk.rows.map(r => $('tr', {}, $('td', {}, monthName(r.month)),
                 ...cols.map(c => hoverable($('td', { class: 'n ' + (r.status[c.key] || '') }, r.shares[c.key] == null ? '' : Math.round(r.shares[c.key]) + '%'), r, c)),
                 (() => { const td = $('td', { class: 'n hov' }, money(r.pay),
-                    r.other_income ? $('span', { class: 'chip', title: 'other income: ' + Object.keys(r.other_income_detail || {}).join(', ') + '. Real money, kept out of the denominator.' }, `+${money(r.other_income)} other`) : null,
                     r.asset_sales ? $('span', { class: 'chip', title: 'arrived from a tracking account; not counted as income' }, `+${money(r.asset_sales)} sale`) : null);
                   td.tabIndex = 0; td.addEventListener('mousemove', ev => showTip(ev.clientX, ev.clientY, incomeTip(r))); td.addEventListener('mouseleave', hideTip);
                   td.addEventListener('focus', () => { const b = td.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, incomeTip(r)); }); td.addEventListener('blur', hideTip); return td; })(),
                 $('td', { class: 'n' }, money(r.spending)))),
               $('tr', { class: 'avg' }, $('td', {}, '12 months'), ...cols.map(c => $('td', { class: 'n' }, bmk.averages[c.key] == null ? '' : Math.round(bmk.averages[c.key]) + '%')), $('td', { class: 'n', colspan: 2 }, '')),
-              $('tr', { class: 'avg' }, $('td', {}, 'Savings, 12 months'), $('td', { class: 'n', colspan: cols.length, style: 'font-weight:500' },
+              ))),
+          $('p', { class: 'bm-note' }, $('b', {}, 'Savings, 12 months: '),
                 bmk.pay_savings_rate == null ? `${pct(cf.totals.savings_rate)} of all income kept` :
-                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(cf.totals.savings_rate)} of all income kept`), $('td', { colspan: 2 }))))));
+                `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other) · ${pct(cf.totals.savings_rate)} of all income kept`));
       } else panel.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
       app.append(panel);
     }
