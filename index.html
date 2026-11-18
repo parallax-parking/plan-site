@@ -424,6 +424,10 @@ window.renderPlan = function (B) {
           $('p', { class: 'bm-note' }, $('b', {}, `Savings, ${view.span}: `),
                 bmk.pay_savings_rate == null ? `${pct(bmk.trailing_savings_rate)} of all income kept` :
                 `${pct(bmk.pay_savings_rate)} of pay saved deliberately (${money(bmk.total_savings_from_pay)} of ${money(bmk.total_invested)} invested; ${money(bmk.total_pool_draw)} came from sales/other${bmk.total_opening_draw ? `, ${money(bmk.total_opening_draw)} from cash on hand before the budget` : ''}) · ${pct(bmk.trailing_savings_rate)} of all income kept`));
+        const PT = P.pretax_savings;
+        if (PT) panel.append($('p', { class: 'bm-note' }, $('b', {}, 'Before the paycheck: '),
+          `${money(PT.total)} a year saved pre-tax and never seen above (401(k) ${PT.k401_pct}% ${money(PT.k401_employee)}, employer match ${money(PT.k401_match)}, HSA ${money(PT.hsa_employee + PT.hsa_employer)}).` +
+          (PT.all_in_savings_rate == null ? '' : ` Counting that with take-home savings over the last 12 months, ${pct(PT.all_in_savings_rate)} of total compensation is saved.`)));
       };
       if (views.length) drawBench(views.find(v => v.key === viewKey));
       else body.append($('p', { class: 'lede' }, 'Appears after the next weekly cash-flow refresh (needs per-month group data).'));
